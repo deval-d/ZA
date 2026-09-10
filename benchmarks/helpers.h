@@ -35,30 +35,35 @@ static void display_bench(
     double neon_s, 
     double sve_s,
     double sme_s,
+    double main_s, 
     uint32_t length, 
     int title 
 ) {
     if (title) { 
         printf(
-            "%-10s %6s | %12s %12s %12s %12s %12s\n", 
+            "%-10s %6s | %12s %12s %12s %12s %12s %12s %12s\n", 
             "routine",
             "length",
             "neon (s)",
             "sve (s)",
-            "sme (s)",
+            "sme (s)", 
+            "main (s)",
             "sve speedup",
-            "sme speedup"
+            "sme speedup", 
+            "main speedup"
         );
     }
     printf(
-        "%-10s %6u | %12.5g %12.5g %12.5g %11.6fx %11.6fx\n",
+        "%-10s %6u | %12.5g %12.5g %12.5g %12.5g %11.6fx %11.6fx %11.6fx\n",
         routine, 
         (unsigned int) length,
         neon_s,
         sve_s,
         sme_s,
+        main_s, 
         neon_s / sve_s, 
-        neon_s / sme_s
+        neon_s / sme_s, 
+        neon_s / main_s
     ); 
 }
 

@@ -1,5 +1,18 @@
 .text 
 
+.global _saxpy 
+.p2align 4 
+
+_saxpy:
+    cmp     w2, #512 
+    b.lo    _saxpy_neon 
+
+    rdsvl   x9, #1 
+    cmp     x9, #32 
+    b.lo    _saxpy_sme4 
+    b       _saxpy_sme8 
+
+
 .global _saxpy_neon
 .p2align 4 
 
@@ -89,7 +102,7 @@ _saxpy_sve:
 
     fmla    z2.s, p0/m, z1.s, z0.s 
 
-    st1w    z2.s, p0 [x1]
+    st1w    z2.s, p0, [x1]
 
     addvl   x0, x0, #1 
     addvl   x1, x1, #1 
@@ -109,10 +122,10 @@ _saxpy_sve:
     ret 
 
 
-.global _saxpy_sme 
+.global _saxpy_sme8 
 .p2align 4 
 
-_saxpy_sme:
+_saxpy_sme8:
     sub     sp, sp, #64
     stp     d8, d9, [sp]
     stp     d10, d11, [sp, 16]
@@ -126,19 +139,23 @@ _saxpy_sme:
     fmov    s0, w3 
     dup     z0.s, z0.s[0]
 
-    mov     w8, #0 
-    mov     w9, #8 
+    cntw    x4  
 
-    cntw    x4 
-    lsl     x13, x4, #5 
-    udiv    x13, x2, x13 
-    cbz     x13, .Lsme_tail 
+    mov     w8, #0 
+    lsr     w9, w4, #1 
 
     // base index 
     mov     x5, #0 
+
+    lsl     x13, x4, #5 
+
+    // number of full 8 SVE-vector chunks 
+    udiv    x13, x2, x13 
+    cbz     x13, .Lsme8_tail 
+
     ptrue   pn8.s 
 
-.Lsme_full:
+.Lsme8_full:
     add     x6, x5, x4, lsl #2 
     add     x7, x6, x4, lsl #2 
     add     x14, x7, x4, lsl #2 
@@ -147,7 +164,7 @@ _saxpy_sme:
     add     x11, x10, x4, lsl #2
     add     x12, x11, x4, lsl #2 
 
-.Lsme_full_loop:
+.Lsme8_full_loop:
     ld1w    {z4.s-z7.s}, pn8/z, [x1, x5, lsl #2]
     ld1w    {z8.s-z11.s}, pn8/z, [x1, x6, lsl #2] 
     ld1w    {z12.s-z15.s}, pn8/z, [x1, x7, lsl #2] 
@@ -212,16 +229,16 @@ _saxpy_sme:
     incw    x5, all, mul #16
 
     subs    x13, x13, #1 
-    b.ne    .Lsme_full 
+    b.ne    .Lsme8_full 
 
-.Lsme_tail:
+.Lsme8_tail:
     add     x6, x5, x4, lsl #2 
     add     x7, x6, x4, lsl #2 
     add     x14, x7, x4, lsl #2 
 
-.Lsme_tail_loop:
+.Lsme8_tail_loop:
     whilelo pn8.s, x5, x2, vlx4 
-    b.none  .Lsme_done 
+    b.none  .Lsme8_done 
 
     whilelo pn9.s, x6, x2, vlx4
     whilelo pn10.s, x7, x2, vlx4 
@@ -258,9 +275,9 @@ _saxpy_sme:
     st1w    {z16.s-z19.s}, pn11, [x1, x14, lsl #2]
 
     incw    x5, all, mul #16 
-    b       .Lsme_tail 
+    b       .Lsme8_tail 
 
-.Lsme_done:
+.Lsme8_done:
     smstop 
 
     ldp     d8, d9, [sp], #16 
@@ -268,12 +285,133 @@ _saxpy_sme:
     ldp     d12, d13, [sp], #16
     ldp     d14, d15, [sp], #16 
 
-    ret 
+    ret
 
 
-    
+.global _saxpy_sme4 
+.p2align 4 
 
+_saxpy_sme4: 
+    sub     sp, sp, #64
+    stp     d8, d9, [sp] 
+    stp     d10, d11, [sp, #16] 
+    stp     d12, d13, [sp, #32]
+    stp     d14, d15, [sp, #48] 
 
+    fmov    w3, s0 
 
+    smstart 
 
-    
+    fmov    s0, w3 
+    dup     z0.s, z0.s[0] 
+
+    cntw    x4  
+
+    mov     w8, #0 
+
+    // base index 
+    mov     x5, #0 
+
+    lsl     x13, x4, #4
+
+    // number of full 4 SVE-vector chunks 
+    udiv    x13, x2, x13 
+    cbz     x13, .Lsme4_tail 
+
+    ptrue   pn8.s 
+
+.Lsme4_full:
+    add     x6, x5, x4, lsl #2
+    add     x7, x6, x4, lsl #2 
+    add     x14, x7, x4, lsl #2 
+
+.Lsme4_full_loop:
+    ld1w    {z4.s-z7.s}, pn8/z, [x1, x5, lsl #2] 
+    ld1w    {z8.s-z11.s}, pn8/z, [x1, x6, lsl #2] 
+    ld1w    {z12.s-z15.s}, pn8/z, [x1, x7, lsl #2]
+    ld1w    {z16.s-z19.s}, pn8/z, [x1, x14, lsl #2]
+
+    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
+    mov     za.s[w8, 1, vgx4], {z8.s-z11.s}
+    mov     za.s[w8, 2, vgx4], {z12.s-z15.s}
+    mov     za.s[w8, 3, vgx4], {z16.s-z19.s} 
+
+    ld1w    {z4.s-z7.s}, pn8/z, [x0, x5, lsl #2]
+    ld1w    {z8.s-z11.s}, pn8/z, [x0, x6, lsl #2] 
+    ld1w    {z12.s-z15.s}, pn8/z, [x0, x7, lsl #2]
+    ld1w    {z16.s-z19.s}, pn8/z, [x0, x14, lsl #2] 
+
+    fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z0.s 
+    fmla    za.s[w8, 1, vgx4], {z8.s-z11.s}, z0.s 
+    fmla    za.s[w8, 2, vgx4], {z12.s-z15.s}, z0.s
+    fmla    za.s[w8, 3, vgx4], {z16.s-z19.s}, z0.s 
+
+    mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
+    mov     {z8.s-z11.s}, za.s[w8, 1, vgx4] 
+    mov     {z12.s-z15.s}, za.s[w8, 2, vgx4]
+    mov     {z16.s-z19.s}, za.s[w8, 3, vgx4] 
+
+    st1w    {z4.s-z7.s}, pn8, [x1, x5, lsl #2] 
+    st1w    {z8.s-z11.s}, pn8, [x1, x6, lsl #2]
+    st1w    {z12.s-z15.s}, pn8, [x1, x7, lsl #2] 
+    st1w    {z16.s-z19.s}, pn8, [x1, x14, lsl #2]
+
+    incw    x5, all, mul #16 
+    subs    x13, x13, #1 
+    b.ne    .Lsme4_full
+
+.Lsme4_tail:
+    add     x6, x5, x4, lsl #2 
+    add     x7, x6, x4, lsl #2 
+    add     x14, x7, x4, lsl #2 
+
+.Lsme4_tail_loop:
+    whilelo pn8.s, x5, x2, vlx4
+    b.none  .Lsme4_done 
+
+    whilelo pn9.s, x6, x2, vlx4
+    whilelo pn10.s, x7, x2, vlx4 
+    whilelo pn11.s, x14, x2, vlx4
+
+    ld1w    {z4.s-z7.s}, pn8/z, [x1, x5, lsl #2] 
+    ld1w    {z8.s-z11.s}, pn9/z, [x1, x6, lsl #2] 
+    ld1w    {z12.s-z15.s}, pn10/z, [x1, x7, lsl #2]
+    ld1w    {z16.s-z19.s}, pn11/z, [x1, x14, lsl #2]
+
+    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
+    mov     za.s[w8, 1, vgx4], {z8.s-z11.s}
+    mov     za.s[w8, 2, vgx4], {z12.s-z15.s}
+    mov     za.s[w8, 3, vgx4], {z16.s-z19.s} 
+
+    ld1w    {z4.s-z7.s}, pn8/z, [x0, x5, lsl #2]
+    ld1w    {z8.s-z11.s}, pn9/z, [x0, x6, lsl #2] 
+    ld1w    {z12.s-z15.s}, pn10/z, [x0, x7, lsl #2]
+    ld1w    {z16.s-z19.s}, pn11/z, [x0, x14, lsl #2] 
+
+    fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z0.s 
+    fmla    za.s[w8, 1, vgx4], {z8.s-z11.s}, z0.s 
+    fmla    za.s[w8, 2, vgx4], {z12.s-z15.s}, z0.s
+    fmla    za.s[w8, 3, vgx4], {z16.s-z19.s}, z0.s 
+
+    mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
+    mov     {z8.s-z11.s}, za.s[w8, 1, vgx4] 
+    mov     {z12.s-z15.s}, za.s[w8, 2, vgx4]
+    mov     {z16.s-z19.s}, za.s[w8, 3, vgx4] 
+
+    st1w    {z4.s-z7.s}, pn8, [x1, x5, lsl #2] 
+    st1w    {z8.s-z11.s}, pn9, [x1, x6, lsl #2]
+    st1w    {z12.s-z15.s}, pn10, [x1, x7, lsl #2] 
+    st1w    {z16.s-z19.s}, pn11, [x1, x14, lsl #2]
+
+    incw    x5, all, mul #16 
+    b       .Lsme4_tail 
+
+.Lsme4_done:
+    smstop 
+
+    ldp     d8, d9, [sp], #16 
+    ldp     d10, d11, [sp], #16
+    ldp     d12, d13, [sp], #16 
+    ldp     d14, d15, [sp], #16 
+
+    ret  

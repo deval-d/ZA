@@ -17,6 +17,7 @@ int main(void) {
     double neon_time; 
     double sve_time;
     double sme_time; 
+    double main_time;
 
     uint32_t lengths[] = L1_LENGTHS;
     uint32_t n_lengths = sizeof(lengths) / sizeof(lengths[0]);
@@ -28,6 +29,7 @@ int main(void) {
     float *y_neon = malloc(max_length * sizeof(*y_neon));
     float *y_sve = malloc(max_length * sizeof(*y_sve));
     float *y_sme = malloc(max_length * sizeof(*y_sme));
+    float *y_main = malloc(max_length * sizeof(*y_main));
 
     for (uint32_t i = 0; i < n_lengths; i++) {
         uint32_t length = lengths[i];
@@ -39,11 +41,13 @@ int main(void) {
         memcpy(y_neon, y_ptr, length * sizeof(*y_neon));
         memcpy(y_sve, y_ptr, length * sizeof(*y_sve));
         memcpy(y_sme, y_ptr, length * sizeof(*y_sme));
+        memcpy(y_main, y_ptr, length * sizeof(*y_main));
 
         BENCH(neon_time, n_iter, n_warm, saxpy_neon(ALPHA, x_ptr, y_neon, length));
         BENCH(sve_time, n_iter, n_warm, saxpy_sve(ALPHA, x_ptr, y_sve, length));
-        BENCH(sme_time, n_iter, n_warm, saxpy_sme(ALPHA, x_ptr, y_sme, length));
+        BENCH(sme_time, n_iter, n_warm, saxpy_sme8(ALPHA, x_ptr, y_sme, length));
+        BENCH(main_time, n_iter, n_warm, saxpy(ALPHA, x_ptr, y_main, length));
 
-        display_bench("saxpy", neon_time, sve_time, sme_time, length, i == 0 ? 1 : 0); 
+        display_bench("saxpy", neon_time, sve_time, sme_time, main_time, length, i == 0 ? 1 : 0); 
     }
 } 

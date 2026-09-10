@@ -40,7 +40,7 @@ int main(void) {
             saxpy_ref(alpha, x_ptr, y_ptr_ref, length);
             saxpy_neon(alpha, x_ptr, y_ptr_neon, length);
             saxpy_sve(alpha, x_ptr, y_ptr_sve, length);
-            saxpy_sme(alpha, x_ptr, y_ptr_sme, length);
+            saxpy_sme8(alpha, x_ptr, y_ptr_sme, length);
 
             result |= assert_eq_vec_float(y_ptr_neon, y_ptr_ref, length);
             result |= assert_eq_vec_float(y_ptr_sve, y_ptr_ref, length); 
