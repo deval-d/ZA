@@ -35,7 +35,7 @@ static int assert_eq_vec_float(float *measured, float *expected, uint32_t length
         if (diff >= ATOL_FLOAT + RTOL_FLOAT * fabsf(expected[idx])) { 
             result = 1; 
             printf(
-                "measured: %10.5g, expected: %10.5g, diff: %10.5g\n", 
+                "measured: %12.5g, expected: %12.5g, diff: %12.5g\n", 
                 measured[idx], 
                 expected[idx],
                 diff 

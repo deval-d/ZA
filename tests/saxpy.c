@@ -24,7 +24,8 @@ int main(void) {
     float *y_ptr_ref = malloc(max_length * sizeof(*y_ptr_ref));
     float *y_ptr_neon = malloc(max_length * sizeof(*y_ptr_neon));
     float *y_ptr_sve = malloc(max_length * sizeof(*y_ptr_sve));
-    float *y_ptr_sme = malloc(max_length * sizeof(*y_ptr_sme)); 
+    float *y_ptr_sme4 = malloc(max_length * sizeof(*y_ptr_sme4));
+    float *y_ptr_sme8 = malloc(max_length * sizeof(*y_ptr_sme8));
 
     int result = 0;
     for (uint32_t i = 0; i < n_alphas; i++) { 
@@ -35,16 +36,19 @@ int main(void) {
             memcpy(y_ptr_ref, y_ptr_base, length * sizeof(*y_ptr_ref)); 
             memcpy(y_ptr_neon, y_ptr_base, length * sizeof(*y_ptr_neon));
             memcpy(y_ptr_sve, y_ptr_base, length * sizeof(*y_ptr_sve));
-            memcpy(y_ptr_sme, y_ptr_base, length * sizeof(*y_ptr_sme)); 
+            memcpy(y_ptr_sme4, y_ptr_base, length * sizeof(*y_ptr_sme4)); 
+            memcpy(y_ptr_sme8, y_ptr_base, length * sizeof(*y_ptr_sme8));
 
             saxpy_ref(alpha, x_ptr, y_ptr_ref, length);
             saxpy_neon(alpha, x_ptr, y_ptr_neon, length);
             saxpy_sve(alpha, x_ptr, y_ptr_sve, length);
-            saxpy_sme8(alpha, x_ptr, y_ptr_sme, length);
+            saxpy_sme4xVGx4(alpha, x_ptr, y_ptr_sme4, length);
+            saxpy_sme8xVGx4(alpha, x_ptr, y_ptr_sme8, length);
 
             result |= assert_eq_vec_float(y_ptr_neon, y_ptr_ref, length);
             result |= assert_eq_vec_float(y_ptr_sve, y_ptr_ref, length); 
-            result |= assert_eq_vec_float(y_ptr_sme, y_ptr_ref, length);
+            result |= assert_eq_vec_float(y_ptr_sme4, y_ptr_ref, length);
+            result |= assert_eq_vec_float(y_ptr_sme8, y_ptr_ref, length);
         }
     }
 
@@ -53,7 +57,8 @@ int main(void) {
     free(y_ptr_ref);
     free(y_ptr_neon);
     free(y_ptr_sve);
-    free(y_ptr_sme);
+    free(y_ptr_sme4);
+    free(y_ptr_sme8);
 
     if (!result) {
         printf("all saxpy tests passed.\n");
