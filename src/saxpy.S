@@ -9,8 +9,8 @@ _saxpy:
 
     rdsvl   x9, #1 
     cmp     x9, #32 
-    b.lo    _saxpy_sme4 
-    b       _saxpy_sme8 
+    b.lo    _saxpy_sme4xVGx4 
+    b       _saxpy_sme8xVGx4
 
 
 .global _saxpy_neon
@@ -122,10 +122,10 @@ _saxpy_sve:
     ret 
 
 
-.global _saxpy_sme8 
+.global _saxpy_sme8xVGx4
 .p2align 4 
 
-_saxpy_sme8:
+_saxpy_sme8xVGx4:
     sub     sp, sp, #64
     stp     d8, d9, [sp]
     stp     d10, d11, [sp, 16]
@@ -149,13 +149,13 @@ _saxpy_sme8:
 
     lsl     x13, x4, #5 
 
-    // number of full 8 SVE-vector chunks 
+    // number of full 8xVGx4 chunks 
     udiv    x13, x2, x13 
-    cbz     x13, .Lsme8_tail 
+    cbz     x13, .Lsme8_tail_loop 
 
     ptrue   pn8.s 
 
-.Lsme8_full:
+.Lsme8_full_loop:
     add     x6, x5, x4, lsl #2 
     add     x7, x6, x4, lsl #2 
     add     x14, x7, x4, lsl #2 
@@ -164,7 +164,6 @@ _saxpy_sme8:
     add     x11, x10, x4, lsl #2
     add     x12, x11, x4, lsl #2 
 
-.Lsme8_full_loop:
     ld1w    {z4.s-z7.s}, pn8/z, [x1, x5, lsl #2]
     ld1w    {z8.s-z11.s}, pn8/z, [x1, x6, lsl #2] 
     ld1w    {z12.s-z15.s}, pn8/z, [x1, x7, lsl #2] 
@@ -229,14 +228,13 @@ _saxpy_sme8:
     incw    x5, all, mul #16
 
     subs    x13, x13, #1 
-    b.ne    .Lsme8_full 
+    b.ne    .Lsme8_full_loop 
 
-.Lsme8_tail:
+.Lsme8_tail_loop:
     add     x6, x5, x4, lsl #2 
     add     x7, x6, x4, lsl #2 
     add     x14, x7, x4, lsl #2 
 
-.Lsme8_tail_loop:
     whilelo pn8.s, x5, x2, vlx4 
     b.none  .Lsme8_done 
 
@@ -275,7 +273,7 @@ _saxpy_sme8:
     st1w    {z16.s-z19.s}, pn11, [x1, x14, lsl #2]
 
     incw    x5, all, mul #16 
-    b       .Lsme8_tail 
+    b       .Lsme8_tail_loop
 
 .Lsme8_done:
     smstop 
@@ -288,10 +286,10 @@ _saxpy_sme8:
     ret
 
 
-.global _saxpy_sme4 
+.global _saxpy_sme4xVGx4 
 .p2align 4 
 
-_saxpy_sme4: 
+_saxpy_sme4xVGx4: 
     sub     sp, sp, #64
     stp     d8, d9, [sp] 
     stp     d10, d11, [sp, #16] 
@@ -314,18 +312,17 @@ _saxpy_sme4:
 
     lsl     x13, x4, #4
 
-    // number of full 4 SVE-vector chunks 
+    // number of full 4xVGx4 chunks 
     udiv    x13, x2, x13 
-    cbz     x13, .Lsme4_tail 
+    cbz     x13, .Lsme4_tail_loop
 
     ptrue   pn8.s 
 
-.Lsme4_full:
+.Lsme4_full_loop:
     add     x6, x5, x4, lsl #2
     add     x7, x6, x4, lsl #2 
     add     x14, x7, x4, lsl #2 
 
-.Lsme4_full_loop:
     ld1w    {z4.s-z7.s}, pn8/z, [x1, x5, lsl #2] 
     ld1w    {z8.s-z11.s}, pn8/z, [x1, x6, lsl #2] 
     ld1w    {z12.s-z15.s}, pn8/z, [x1, x7, lsl #2]
@@ -358,14 +355,13 @@ _saxpy_sme4:
 
     incw    x5, all, mul #16 
     subs    x13, x13, #1 
-    b.ne    .Lsme4_full
+    b.ne    .Lsme4_full_loop
 
-.Lsme4_tail:
+.Lsme4_tail_loop:
     add     x6, x5, x4, lsl #2 
     add     x7, x6, x4, lsl #2 
     add     x14, x7, x4, lsl #2 
 
-.Lsme4_tail_loop:
     whilelo pn8.s, x5, x2, vlx4
     b.none  .Lsme4_done 
 
@@ -404,7 +400,7 @@ _saxpy_sme4:
     st1w    {z16.s-z19.s}, pn11, [x1, x14, lsl #2]
 
     incw    x5, all, mul #16 
-    b       .Lsme4_tail 
+    b       .Lsme4_tail_loop 
 
 .Lsme4_done:
     smstop 
