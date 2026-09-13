@@ -45,9 +45,18 @@ int main(void) {
 
         BENCH(neon_time, n_iter, n_warm, saxpy_neon(ALPHA, x_ptr, y_neon, length));
         BENCH(sve_time, n_iter, n_warm, saxpy_sve(ALPHA, x_ptr, y_sve, length));
-        BENCH(sme_time, n_iter, n_warm, saxpy_sme8(ALPHA, x_ptr, y_sme, length));
+        BENCH(sme_time, n_iter, n_warm, saxpy_sme8xVGx4(ALPHA, x_ptr, y_sme, length));
         BENCH(main_time, n_iter, n_warm, saxpy(ALPHA, x_ptr, y_main, length));
 
         display_bench("saxpy", neon_time, sve_time, sme_time, main_time, length, i == 0 ? 1 : 0); 
     }
+
+    free(x_ptr);
+    free(y_ptr);
+    free(y_neon);
+    free(y_sve);
+    free(y_sme);
+    free(y_main);
+
+    return 0;
 } 
