@@ -71,6 +71,7 @@ _sscal_neon:
 .p2align 4 
 
 _sscal_sve:
+    mov     w1, w1
     sub     sp, sp, #64
     stp     d8, d9, [sp]
     stp     d10, d11, [sp, #16]
@@ -85,7 +86,7 @@ _sscal_sve:
     dup     z0.s, z0.s[0]
 
     mov     w3, #0 
-    whilelo p0.s, w3, w1
+    whilelo p0.s, x3, x1
     b.none  .Lsve_done 
 
 .Lsve_loop:
@@ -96,7 +97,7 @@ _sscal_sve:
     addvl   x0, x0, #1 
 
     incw    x3 
-    whilelo p0.s, w3, w1 
+    whilelo p0.s, x3, x1 
     b.first .Lsve_loop
 
 .Lsve_done:
@@ -114,6 +115,7 @@ _sscal_sve:
 .p2align 4 
 
 _sscal_sme4xVGx4:
+    mov     w1, w1
     sub     sp, sp, #64
     stp     d8, d9, [sp]
     stp     d10, d11, [sp, #16]
@@ -225,6 +227,7 @@ _sscal_sme4xVGx4:
 .p2align 4 
 
 _sscal_sme8xVGx4:
+    mov     w1, w1
     sub     sp, sp, #64
     stp     d8, d9, [sp]
     stp     d10, d11, [sp, #16]

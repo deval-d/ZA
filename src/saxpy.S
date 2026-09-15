@@ -79,6 +79,7 @@ _saxpy_neon:
 .p2align 4 
 
 _saxpy_sve:
+    mov     w2, w2
     sub     sp, sp, #64 
     stp     d8, d9, [sp] 
     stp     d10, d11, [sp, #16]
@@ -93,7 +94,7 @@ _saxpy_sve:
     dup     z0.s, z0.s[0]
 
     mov     w4, #0 
-    whilelo p0.s, w4, w2 
+    whilelo p0.s, x4, x2 
     b.none  .Lsve_done 
 
 .Lsve_loop:
@@ -108,7 +109,7 @@ _saxpy_sve:
     addvl   x1, x1, #1 
 
     incw    x4
-    whilelo p0.s, w4, w2 
+    whilelo p0.s, x4, x2 
     b.first .Lsve_loop 
 
 .Lsve_done:
@@ -126,6 +127,7 @@ _saxpy_sve:
 .p2align 4 
 
 _saxpy_sme8xVGx4:
+    mov     w2, w2
     sub     sp, sp, #64
     stp     d8, d9, [sp]
     stp     d10, d11, [sp, 16]
@@ -290,6 +292,7 @@ _saxpy_sme8xVGx4:
 .p2align 4 
 
 _saxpy_sme4xVGx4: 
+    mov     w2, w2
     sub     sp, sp, #64
     stp     d8, d9, [sp] 
     stp     d10, d11, [sp, #16] 
