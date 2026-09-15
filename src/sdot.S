@@ -4,7 +4,7 @@
 .p2align 4 
 
 _sdot:
-    cmp     w2, #2048
+    cmp     w2, #1750
     b.lo    _sdot_neon 
 
     rdsvl   x9, #1 
@@ -221,25 +221,15 @@ _sdot_sme4xVGx4:
     b       .Lsme4_tail_loop 
 
 .Lsme4_reduce:
+    mov     {z0.s-z3.s}, za.s[w8, 1, vgx4]
+    mov     {z4.s-z7.s}, za.s[w8, 3, vgx4]
+    fadd    za.s[w8, 0, vgx4], {z0.s-z3.s}
+    fadd    za.s[w8, 2, vgx4], {z4.s-z7.s}
+
+    mov     {z0.s-z3.s}, za.s[w8, 2, vgx4]
+    fadd    za.s[w8, 0, vgx4], {z0.s-z3.s}
+
     mov     {z0.s-z3.s}, za.s[w8, 0, vgx4]
-    mov     {z4.s-z7.s}, za.s[w8, 1, vgx4]
-    mov     {z8.s-z11.s}, za.s[w8, 2, vgx4]
-    mov     {z12.s-z15.s}, za.s[w8, 3, vgx4]
-
-    fadd    z0.s, z0.s, z4.s 
-    fadd    z1.s, z1.s, z5.s 
-    fadd    z2.s, z2.s, z6.s 
-    fadd    z3.s, z3.s, z7.s 
-
-    fadd    z8.s, z8.s, z12.s 
-    fadd    z9.s, z9.s, z13.s 
-    fadd    z10.s, z10.s, z14.s 
-    fadd    z11.s, z11.s, z15.s 
-
-    fadd    z0.s, z0.s, z8.s 
-    fadd    z1.s, z1.s, z9.s 
-    fadd    z2.s, z2.s, z10.s 
-    fadd    z3.s, z3.s, z11.s 
 
     fadd    z0.s, z0.s, z1.s 
     fadd    z2.s, z2.s, z3.s 
@@ -371,56 +361,30 @@ _sdot_sme8xVGx4:
     b       .Lsme8_tail_loop 
 
 .Lsme8_reduce:
+    mov     {z0.s-z3.s}, za.s[w8, 1, vgx4]
+    mov     {z4.s-z7.s}, za.s[w8, 3, vgx4]
+    mov     {z8.s-z11.s}, za.s[w9, 1, vgx4]
+    mov     {z12.s-z15.s}, za.s[w9, 3, vgx4]
+
+    fadd    za.s[w8, 0, vgx4], {z0.s-z3.s}
+    fadd    za.s[w8, 2, vgx4], {z4.s-z7.s}
+    fadd    za.s[w9, 0, vgx4], {z8.s-z11.s}
+    fadd    za.s[w9, 2, vgx4], {z12.s-z15.s}
+
+    mov     {z0.s-z3.s}, za.s[w8, 2, vgx4]
+    mov     {z4.s-z7.s}, za.s[w9, 2, vgx4]
+    fadd    za.s[w8, 0, vgx4], {z0.s-z3.s}
+    fadd    za.s[w9, 0, vgx4], {z4.s-z7.s}
+
+    mov     {z0.s-z3.s}, za.s[w9, 0, vgx4]
+    fadd    za.s[w8, 0, vgx4], {z0.s-z3.s}
+
     mov     {z0.s-z3.s}, za.s[w8, 0, vgx4]
-    mov     {z4.s-z7.s}, za.s[w8, 1, vgx4] 
-    mov     {z8.s-z11.s}, za.s[w8, 2, vgx4]
-    mov     {z12.s-z15.s}, za.s[w8, 3, vgx4] 
+    fadd    z0.s, z0.s, z1.s
+    fadd    z2.s, z2.s, z3.s
+    fadd    z0.s, z0.s, z2.s
 
-    fadd    z0.s, z0.s, z4.s 
-    fadd    z1.s, z1.s, z5.s 
-    fadd    z2.s, z2.s, z6.s 
-    fadd    z3.s, z3.s, z7.s 
-
-    fadd    z8.s, z8.s, z12.s 
-    fadd    z9.s, z9.s, z13.s 
-    fadd    z10.s, z10.s, z14.s 
-    fadd    z11.s, z11.s, z15.s 
-
-    mov     {z16.s-z19.s}, za.s[w9, 0, vgx4]
-    mov     {z20.s-z23.s}, za.s[w9, 1, vgx4] 
-    mov     {z24.s-z27.s}, za.s[w9, 2, vgx4]
-    mov     {z28.s-z31.s}, za.s[w9, 3, vgx4] 
-
-    fadd    z16.s, z16.s, z20.s 
-    fadd    z17.s, z17.s, z21.s 
-    fadd    z18.s, z18.s, z22.s 
-    fadd    z19.s, z19.s, z23.s 
-
-    fadd    z24.s, z24.s, z28.s 
-    fadd    z25.s, z25.s, z29.s 
-    fadd    z26.s, z26.s, z30.s 
-    fadd    z27.s, z27.s, z31.s 
-
-    fadd    z0.s, z0.s, z1.s 
-    fadd    z2.s, z2.s, z3.s 
-    fadd    z8.s, z8.s, z9.s 
-    fadd    z10.s, z10.s, z11.s 
-    fadd    z16.s, z16.s, z17.s
-    fadd    z18.s, z18.s, z19.s 
-    fadd    z24.s, z24.s, z25.s 
-    fadd    z26.s, z26.s, z27.s 
-
-    fadd    z0.s, z0.s, z2.s 
-    fadd    z8.s, z8.s, z10.s 
-    fadd    z16.s, z16.s, z18.s 
-    fadd    z24.s, z24.s, z26.s 
-    
-    fadd    z0.s, z0.s, z8.s 
-    fadd    z16.s, z16.s, z24.s 
-
-    fadd    z0.s, z0.s, z16.s 
-
-    ptrue   p0.s 
+    ptrue   p0.s
     faddv   s0, p0, z0.s
 
 .Lsme8_done:
