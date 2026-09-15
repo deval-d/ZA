@@ -5,14 +5,6 @@
 #define ALPHA 1.000001f
 #define TARGET_ELEMENTS 10000000
 
-extern void bench_sscal_sve_on(
-    float alpha, 
-    float *x_ptr, 
-    float *y_ptr,
-    uint32_t length,
-    uint32_t n_iter
-);
-
 int main(void) { 
     double neon_time; 
     double sve_time;
