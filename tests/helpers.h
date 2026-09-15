@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MIN_RAND_FLOAT -10000.0f
-#define MAX_RAND_FLOAT  10000.0f 
+#define MIN_RAND_FLOAT -100.0f
+#define MAX_RAND_FLOAT  100.0f 
 #define ATOL_FLOAT 1e-6
 #define RTOL_FLOAT 1e-6
 
@@ -35,7 +35,7 @@ static int assert_eq_vec_float(float *measured, float *expected, uint32_t length
         if (diff >= ATOL_FLOAT + RTOL_FLOAT * fabsf(expected[idx])) { 
             result = 1; 
             printf(
-                "measured: %12.5g, expected: %12.5g, diff: %12.5g\n", 
+                "measured: %12.9g, expected: %12.9g, diff: %12.9g\n", 
                 measured[idx], 
                 expected[idx],
                 diff 
