@@ -64,8 +64,8 @@ extern float sdot_sme4xVGx4(float *x_ptr, float *y_ptr, uint32_t n);
 /// `x · y` 
 ///
 /// dispatches to 
-///     NEON for n < 2048 
-///     SME  for n >= 2048
+///     NEON for n < 1750 
+///     SME  for n >= 1750
 ///
 /// SME kernel is chosen based on the physical SVL. 
 extern float sdot(float *x_ptr, float *y_ptr, uint32_t n);
