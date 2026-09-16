@@ -68,6 +68,29 @@ extern float sdot_sme4xVGx4(float *x_ptr, float *y_ptr, uint32_t n);
 ///     SME  for n >= 1750
 ///
 /// SME kernel is chosen based on the physical SVL. 
-extern float sdot(float *x_ptr, float *y_ptr, uint32_t n);
+extern float sdot(float *x_ptr, uint32_t n);
+
+
+/// NEON implementation 
+extern float sasum_neon(float *x_ptr, uint32_t n);
+/// SVE implementation 
+extern float sasum_sve(float *x_ptr, uint32_t n);
+
+/// SME implementation for hardware with SVL >= 256 bits 
+extern float sasum_sme8xVGx4(float *x_ptr, uint32_t n);
+/// SME implementation for hardware with SVL = 128 bits 
+extern float sasum_sme4xVGx4(float *x_ptr, uint32_t n);
+
+/// main optimized `sasum`
+///
+/// `sum(|x_i|)` 
+///
+/// dispatches to 
+///     NEON for n < 2725 
+///     SME  for n >= 2725
+///
+/// SME kernel is chosen based on the physical SVL. 
+extern float sasum(float *x_ptr, uint32_t n);
+
 
 #endif
