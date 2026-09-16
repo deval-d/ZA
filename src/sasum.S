@@ -203,9 +203,9 @@ _sasum_sme4xVGx4:
     and     z19.s, z19.s, #0x7fffffff
 
     fadd    za.s[w8, 0, vgx4], {z4.s-z7.s} 
-    fadd    za.s[w8, 1, vgx4], {z8.s-z11.s}
-    fadd    za.s[w8, 2, vgx4], {z12.s-z15.s}
-    fadd    za.s[w8, 3, vgx4], {z16.s-z19.s}
+    fadd    za.s[w8, 0, vgx4], {z8.s-z11.s}
+    fadd    za.s[w8, 0, vgx4], {z12.s-z15.s}
+    fadd    za.s[w8, 0, vgx4], {z16.s-z19.s}
 
     incw    x12, all, mul #16 
     subs    w4, w4, #1 
@@ -248,29 +248,22 @@ _sasum_sme4xVGx4:
     and     z19.s, z19.s, #0x7fffffff
 
     fadd    za.s[w8, 0, vgx4], {z4.s-z7.s} 
-    fadd    za.s[w8, 1, vgx4], {z8.s-z11.s}
-    fadd    za.s[w8, 2, vgx4], {z12.s-z15.s}
-    fadd    za.s[w8, 3, vgx4], {z16.s-z19.s}
+    fadd    za.s[w8, 0, vgx4], {z8.s-z11.s}
+    fadd    za.s[w8, 0, vgx4], {z12.s-z15.s}
+    fadd    za.s[w8, 0, vgx4], {z16.s-z19.s}
 
     incw    x12, all, mul #16 
     b       .Lsme4_tail_loop
 
 .Lsme4_reduce:
-    mov     {z4.s-z7.s}, za.s[w8, 1, vgx4]
-    mov     {z8.s-z11.s}, za.s[w8, 3, vgx4]
-    fadd    za.s[w8, 0, vgx4], {z4.s-z7.s}
-    fadd    za.s[w8, 2, vgx4], {z8.s-z11.s} 
-
-    mov     {z4.s-z7.s}, za.s[w8, 2, vgx4]
-    fadd    za.s[w8, 0, vgx4], {z4.s-z7.s}
-
     mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
-    fadd    z4.s, z4.s, z5.s 
-    fadd    z6.s, z6.s, z7.s 
-    fadd    z4.s, z4.s, z6.s 
-    
-    ptrue   p0.s 
-    faddv   s0, p0, z4.s 
+
+    fadd    z4.s, z4.s, z5.s
+    fadd    z6.s, z6.s, z7.s
+    fadd    z4.s, z4.s, z6.s
+
+    ptrue   p0.s
+    faddv   s0, p0, z4.s
 
 .Lsme4_done:
     fmov    w3, s0 
