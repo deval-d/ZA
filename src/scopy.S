@@ -1,0 +1,209 @@
+.text
+
+.global _scopy 
+.p2align 4
+
+_scopy:
+    cmp     w2, #496 
+    b.lo    _scopy_neon 
+    b       _scopy_sme
+
+
+.global _scopy_neon 
+.p2align 4 
+
+_scopy_neon:
+    cbz     w2, .Lneon_done 
+
+    lsr     w3, w2, #5 
+    and     w4, w2, #31
+    lsr     w4, w4, #4 
+    and     w5, w2, #15
+    lsr     w5, w5, #2 
+    and     w6, w2, #3 
+
+    cbz     w3, .Lsimd_16
+
+.Lsimd_32_loop: 
+    ldp     q0, q1, [x0], #32 
+    ldp     q2, q3, [x0], #32
+    ldp     q4, q5, [x0], #32
+    ldp     q6, q7, [x0], #32
+
+    stp     q0, q1, [x1], #32
+    stp     q2, q3, [x1], #32 
+    stp     q4, q5, [x1], #32
+    stp     q6, q7, [x1], #32
+
+    subs    w3, w3, #1 
+    b.ne    .Lsimd_32_loop
+
+.Lsimd_16:
+    cbz     w4, .Lsimd_4
+
+.Lsimd_16_loop:
+    ldp     q0, q1, [x0], #32
+    ldp     q2, q3, [x0], #32 
+
+    stp     q0, q1, [x1], #32 
+    stp     q2, q3, [x1], #32 
+
+    subs    w4, w4, #1 
+    b.ne    .Lsimd_16_loop
+
+.Lsimd_4: 
+    cbz     w5, .Lscalar  
+
+.Lsimd_4_loop:
+    ldr     q0, [x0], #16 
+    str     q0, [x1], #16 
+
+    subs    w5, w5, #1 
+    b.ne    .Lsimd_4_loop 
+    
+.Lscalar:
+    cbz     w6, .Lneon_done 
+
+.Lscalar_loop:
+    ldr     s0, [x0], #4 
+    str     s0, [x1], #4 
+
+    subs    w6, w6, #1
+    b.ne    .Lscalar_loop 
+
+.Lneon_done:
+    ret
+
+
+.global _scopy_sve 
+.p2align 4 
+
+_scopy_sve:
+    sub     sp, sp, #64 
+    stp     d8, d9, [sp]
+    stp     d10, d11, [sp, #16]
+    stp     d12, d13, [sp, #32]
+    stp     d14, d15, [sp, #48]
+    
+    smstart sm 
+
+    mov     x4, #0 
+
+    whilelo p0.s, x4, x2 
+    b.none  .Lsve_done 
+
+.Lsve_loop:
+    ld1w    z0.s, p0/z, [x0, x4, lsl #2] 
+    st1w    z0.s, p0, [x1, x4, lsl #2] 
+
+    incw    x4 
+
+    whilelo p0.s, x4, x2
+    b.first .Lsve_loop
+
+.Lsve_done:
+    smstop  sm
+
+    ldp     d8, d9, [sp], #16 
+    ldp     d10, d11, [sp], #16 
+    ldp     d12, d13, [sp], #16 
+    ldp     d14, d15, [sp], #16 
+
+    ret 
+
+
+.global _scopy_sme 
+.p2align 4 
+
+_scopy_sme:
+    sub     sp, sp, #64 
+    stp     d8, d9, [sp]
+    stp     d10, d11, [sp, #16]
+    stp     d12, d13, [sp, #32]
+    stp     d14, d15, [sp, #48]
+
+    smstart 
+    
+    // base 8xVGx4 idx 
+    mov     x3, #0 
+
+    // number of float32's in SVL 
+    cntw    x4 
+    // number of float32's in 32 SVLs 
+    lsl     x5, x4, #5
+
+    // number of full 8xVGx4s 
+    udiv    x6, x2, x5 
+    cbz     x6, .Lsme8_tail_loop 
+
+    ptrue   pn8.s 
+
+.Lsme8_full_loop: 
+    add     x7, x3, x4, lsl #2   
+    add     x8, x7, x4, lsl #2 
+    add     x9, x8, x4, lsl #2 
+    add     x10, x9, x4, lsl #2
+    add     x11, x10, x4, lsl #2 
+    add     x12, x11, x4, lsl #2
+    add     x13, x12, x4, lsl #2
+
+    ld1w    {z0.s-z3.s}, pn8/z, [x0, x3, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x0, x7, lsl #2]
+    ld1w    {z8.s-z11.s}, pn8/z, [x0, x8, lsl #2]
+    ld1w    {z12.s-z15.s}, pn8/z, [x0, x9, lsl #2] 
+
+    st1w    {z0.s-z3.s}, pn8, [x1, x3, lsl #2]
+    st1w    {z4.s-z7.s}, pn8, [x1, x7, lsl #2]
+    st1w    {z8.s-z11.s}, pn8, [x1, x8, lsl #2]
+    st1w    {z12.s-z15.s}, pn8, [x1, x9, lsl #2] 
+
+    ld1w    {z0.s-z3.s}, pn8/z, [x0, x10, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x0, x11, lsl #2]
+    ld1w    {z8.s-z11.s}, pn8/z, [x0, x12, lsl #2]
+    ld1w    {z12.s-z15.s}, pn8/z, [x0, x13, lsl #2] 
+
+    st1w    {z0.s-z3.s}, pn8, [x1, x10, lsl #2]
+    st1w    {z4.s-z7.s}, pn8, [x1, x11, lsl #2]
+    st1w    {z8.s-z11.s}, pn8, [x1, x12, lsl #2]
+    st1w    {z12.s-z15.s}, pn8, [x1, x13, lsl #2] 
+
+    add     x3, x3, x5  
+
+    subs    x6, x6, #1 
+    b.ne    .Lsme8_full_loop 
+
+.Lsme8_tail_loop:
+    add     x7, x3, x4, lsl #2 
+    add     x8, x7, x4, lsl #2 
+    add     x9, x8, x4, lsl #2
+
+    whilelo pn8.s, x3, x2, vlx4  
+    b.none  .Lsme8_done 
+
+    whilelo pn9.s, x7, x2, vlx4
+    whilelo pn10.s, x8, x2, vlx4
+    whilelo pn11.s, x9, x2, vlx4 
+
+    ld1w    {z0.s-z3.s}, pn8/z, [x0, x3, lsl #2]
+    ld1w    {z4.s-z7.s}, pn9/z, [x0, x7, lsl #2]
+    ld1w    {z8.s-z11.s}, pn10/z, [x0, x8, lsl #2]
+    ld1w    {z12.s-z15.s}, pn11/z, [x0, x9, lsl #2] 
+
+    st1w    {z0.s-z3.s}, pn8, [x1, x3, lsl #2]
+    st1w    {z4.s-z7.s}, pn9, [x1, x7, lsl #2]
+    st1w    {z8.s-z11.s}, pn10, [x1, x8, lsl #2]
+    st1w    {z12.s-z15.s}, pn11, [x1, x9, lsl #2]
+
+    add     x3, x3, x4, lsl #4  
+    b       .Lsme8_tail_loop
+
+.Lsme8_done:
+    smstop 
+
+    ldp     d8, d9, [sp], #16 
+    ldp     d10, d11, [sp], #16 
+    ldp     d12, d13, [sp], #16 
+    ldp     d14, d15, [sp], #16 
+
+    ret 
+

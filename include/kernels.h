@@ -93,4 +93,22 @@ extern float sasum_sme4xVGx4(float *x_ptr, uint32_t n);
 extern float sasum(float *x_ptr, uint32_t n);
 
 
+/// NEON implementation
+extern void scopy_neon(float *x_ptr, float *y_ptr, uint32_t n);
+/// SVE implementation
+extern void scopy_sve(float *x_ptr, float *y_ptr, uint32_t n);
+
+/// SME implementation for any SVL hardware 
+extern void scopy_sme(float *x_ptr, float *y_ptr, uint32_t n);
+
+
+/// main optimized `scopy` 
+///
+/// `y <- x` 
+/// 
+/// dispatches to 
+///     NEON for n < 496
+///     SME  for n >= 496   
+extern void scopy(float *x_ptr, float *y_ptr, uint32_t n);
+
 #endif
