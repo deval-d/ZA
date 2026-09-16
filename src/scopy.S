@@ -134,11 +134,11 @@ _scopy_sme:
 
     // number of full 8xVGx4s 
     udiv    x6, x2, x5 
-    cbz     x6, .Lsme8_tail_loop 
+    cbz     x6, .Lsme_tail_loop 
 
     ptrue   pn8.s 
 
-.Lsme8_full_loop: 
+.Lsme_full_loop: 
     add     x7, x3, x4, lsl #2   
     add     x8, x7, x4, lsl #2 
     add     x9, x8, x4, lsl #2 
@@ -170,15 +170,15 @@ _scopy_sme:
     add     x3, x3, x5  
 
     subs    x6, x6, #1 
-    b.ne    .Lsme8_full_loop 
+    b.ne    .Lsme_full_loop 
 
-.Lsme8_tail_loop:
+.Lsme_tail_loop:
     add     x7, x3, x4, lsl #2 
     add     x8, x7, x4, lsl #2 
     add     x9, x8, x4, lsl #2
 
     whilelo pn8.s, x3, x2, vlx4  
-    b.none  .Lsme8_done 
+    b.none  .Lsme_done 
 
     whilelo pn9.s, x7, x2, vlx4
     whilelo pn10.s, x8, x2, vlx4
@@ -195,9 +195,9 @@ _scopy_sme:
     st1w    {z12.s-z15.s}, pn11, [x1, x9, lsl #2]
 
     add     x3, x3, x4, lsl #4  
-    b       .Lsme8_tail_loop
+    b       .Lsme_tail_loop
 
-.Lsme8_done:
+.Lsme_done:
     smstop 
 
     ldp     d8, d9, [sp], #16 
