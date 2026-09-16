@@ -111,4 +111,26 @@ extern void scopy_sme(float *x_ptr, float *y_ptr, uint32_t n);
 ///     SME  for n >= 496   
 extern void scopy(float *x_ptr, float *y_ptr, uint32_t n);
 
+
+/// NEON implementation
+extern void sswap_neon(float *x_ptr, float *y_ptr, uint32_t n);
+/// SVE implementation
+extern void sswap_sve(float *x_ptr, float *y_ptr, uint32_t n);
+
+/// SME implementation for any SVL hardware
+extern void sswap_sme(float *x_ptr, float *y_ptr, uint32_t n);
+
+
+/// main optimized `sswap`
+///
+/// `y <-> x`
+///
+/// dispatches to SME for:
+///     n == 320
+///     380 <= n <= 384
+///     424 <= n <= 448
+///     n >= 472
+/// and to NEON otherwise.
+extern void sswap(float *x_ptr, float *y_ptr, uint32_t n);
+
 #endif

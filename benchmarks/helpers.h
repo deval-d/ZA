@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define L1_LENGTHS {4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384}
+#define L1_LENGTHS {4, 8, 16, 32, 64, 128, 256, 460, 512, 1024, 2048, 4096, 8192, 16384}
 
 #define BENCH(result, n_iter, n_warm, expr) do {        \
     for (uint32_t _i = 0; _i < (n_warm); _i++) expr;    \
