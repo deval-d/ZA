@@ -193,13 +193,10 @@ _sswap_sme:
     b.ne    .Lsme8_full
 
 .Lsme4_full:
-    // number of float32's in 16 SVLs
-    lsl     x5, x4, #4
-
-    // number of full 4xVGx4s remaining
     sub     x6, x2, x3
-    udiv    x6, x6, x5
-    cbz     x6, .Lsme_tail
+    lsl     x5, x4, #4
+    cmp     x6, x5
+    b.lo    .Lsme_tail
 
     add     x7, x3, x4, lsl #2   
     add     x8, x7, x4, lsl #2 
@@ -226,9 +223,6 @@ _sswap_sme:
     st1w    {z28.s-z31.s}, pn8, [x0, x9, lsl #2] 
 
     add     x3, x3, x5
-
-    subs    x6, x6, #1
-    b.ne    .Lsme4_full
 
 .Lsme_tail:
     whilelo pn8.s, x3, x2, vlx4
