@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-
 /// NEON implementation
 extern void saxpy_neon(float alpha, float *x_ptr, float *y_ptr, uint32_t n);
 /// SVE implementation
@@ -132,5 +131,20 @@ extern void sswap_sme(float *x_ptr, float *y_ptr, uint32_t n);
 ///     n >= 472
 /// and to NEON otherwise.
 extern void sswap(float *x_ptr, float *y_ptr, uint32_t n);
+
+
+/// NEON implementation 
+extern float snrm2_neon(float *x_ptr, uint32_t n);
+
+/// SVE implementation 
+extern float snrm2_sve(float *x_ptr, uint32_t n);
+
+/// main optimized `snrm2`
+///
+/// `sqrt(sum(|x_i|^2))` 
+///
+/// dispatches to 
+///     NEON for all n
+extern float snrm2(float *x_ptr, uint32_t n);
 
 #endif
