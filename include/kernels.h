@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+extern uint32_t isamax_neon(float *x_ptr, uint32_t n);
+extern uint32_t isamax_sve(float *x_ptr, uint32_t n);
+
 /// NEON implementation
 extern void saxpy_neon(float alpha, float *x_ptr, float *y_ptr, uint32_t n);
 /// SVE implementation
@@ -146,5 +149,19 @@ extern float snrm2_sve(float *x_ptr, uint32_t n);
 /// dispatches to 
 ///     NEON for all n
 extern float snrm2(float *x_ptr, uint32_t n);
+
+
+/// NEON implementation 
+extern uint32_t isamax_neon(float *x_ptr, uint32_t n);
+
+/// main optimized `isamax`
+///
+/// `sum(|x_i|)` 
+///
+/// dispatches to 
+///     NEON for all n 
+///
+/// SME kernel is chosen based on the physical SVL. 
+extern uint32_t isamax(float *x_ptr, uint32_t n);
 
 #endif
