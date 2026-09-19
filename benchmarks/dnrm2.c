@@ -6,6 +6,7 @@
 
 int main(void) { 
     double neon_time; 
+    double sve_time;
     double main_time;
 
     uint32_t lengths[] = L1_LENGTHS;
@@ -22,23 +23,14 @@ int main(void) {
         uint32_t n_warm = n_iter / 10;
 
         BENCH(neon_time, n_iter, n_warm, dnrm2_neon(x_ptr, length));
+        BENCH(sve_time, n_iter, n_warm, dnrm2_sve(x_ptr, length));
         BENCH(main_time, n_iter, n_warm, dnrm2(x_ptr, length));
 
-        if (i == 0) {
-            printf(
-                "%-10s %6s | %12s %12s %12s\n",
-                "routine", "length", "neon (s)", "main (s)", "main speedup"
-            );
-        }
-        printf(
-            "%-10s %6u | %12.5g %12.5g %11.6fx\n",
-            "dnrm2", length, neon_time, main_time, neon_time / main_time
-        );
+        display_bench("dnrm2", neon_time, sve_time, 0.0, main_time, length, i == 0 ? 1 : 0);
     }
 
     free(x_ptr);
 
     return 0;
 } 
-
 

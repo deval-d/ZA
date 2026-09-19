@@ -7,11 +7,7 @@
 _ddot:
     cmp     w2, #936
     b.lo    _ddot_neon 
-
-    rdsvl   x9, #1 
-    cmp     x9, #32 
-    b.lo    _ddot_sme4xVGx4 
-    b       _ddot_sme8xVGx4 
+    b       _ddot_sme4xVGx4
 
 
 .global _ddot_neon 

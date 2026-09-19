@@ -7,11 +7,7 @@
 _daxpy:
     cmp     w2, #360
     b.lo    _daxpy_neon 
-
-    rdsvl   x9, #1 
-    cmp     x9, #32 
-    b.lo    _daxpy_sme4xVGx4 
-    b       _daxpy_sme8xVGx4
+    b       _daxpy_sme4xVGx4
 
 
 .global _daxpy_neon

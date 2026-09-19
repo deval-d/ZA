@@ -207,3 +207,81 @@ _snrm2_neon:
 .Lneon_done:
     ret
 
+
+.global _snrm2_sve
+.p2align 4
+
+_snrm2_sve:
+    mov     w1, w1
+    cbz     w1, .Lsve_empty
+
+    sub     sp, sp, #64
+    stp     d8, d9, [sp]
+    stp     d10, d11, [sp, #16]
+    stp     d12, d13, [sp, #32]
+    stp     d14, d15, [sp, #48]
+
+    smstart sm
+
+    mov     x2, #0
+    dup     z0.s, #0
+
+    whilelo p0.s, x2, x1
+
+.Lsve_max_loop:
+    ld1w    z1.s, p0/z, [x0, x2, lsl #2]
+    fabs    z1.s, p0/m, z1.s
+    fmax    z0.s, p0/m, z0.s, z1.s
+
+    incw    x2
+
+    whilelo p0.s, x2, x1
+    b.first .Lsve_max_loop
+
+    ptrue   p1.s
+    fmaxv   s0, p1, z0.s
+
+    fcmp    s0, #0.0
+    b.eq    .Lsve_done
+    fcmp    s0, s0
+    b.vs    .Lsve_done
+
+    fmov    w3, s0
+    mov     w4, #0x7f800000
+    cmp     w3, w4
+    b.eq    .Lsve_done
+
+    mov     x2, #0
+    dup     z2.s, #0
+    dup     z3.s, z0.s[0]
+
+    whilelo p0.s, x2, x1
+
+.Lsve_sum_loop:
+    ld1w    z1.s, p0/z, [x0, x2, lsl #2]
+    fdiv    z1.s, p0/m, z1.s, z3.s
+    fmla    z2.s, p0/m, z1.s, z1.s
+
+    incw    x2
+
+    whilelo p0.s, x2, x1
+    b.first .Lsve_sum_loop
+
+    faddv   s2, p1, z2.s
+    fsqrt   s2, s2
+    fmul    s0, s0, s2
+
+.Lsve_done:
+    fmov    w3, s0
+    smstop sm
+    fmov    s0, w3
+
+    ldp     d8, d9, [sp], #16
+    ldp     d10, d11, [sp], #16
+    ldp     d12, d13, [sp], #16
+    ldp     d14, d15, [sp], #16
+    ret
+
+.Lsve_empty:
+    fmov    s0, wzr
+    ret

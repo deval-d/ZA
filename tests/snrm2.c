@@ -32,6 +32,7 @@ int main(void) {
 
     float sum_ref;
     float neon;
+    float sve;
 
     int result = 0;
     for (uint32_t j = 0; j < n_lengths; j++) { 
@@ -39,8 +40,10 @@ int main(void) {
 
         sum_ref = snrm2_ref(x_ptr, length);
         neon = snrm2_neon(x_ptr, length);
+        sve = snrm2_sve(x_ptr, length);
 
         result |= assert_eq_vec_float(&neon, &sum_ref, 1);
+        result |= assert_eq_vec_float(&sve, &sum_ref, 1);
     }
 
     free(x_ptr);

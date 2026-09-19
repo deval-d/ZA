@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-extern uint32_t isamax_neon(float *x_ptr, uint32_t n);
-extern uint32_t isamax_sve(float *x_ptr, uint32_t n);
 
 /// NEON implementation
 extern void saxpy_neon(float alpha, float *x_ptr, float *y_ptr, uint32_t n);
@@ -85,7 +83,7 @@ extern float sasum_sme4xVGx4(float *x_ptr, uint32_t n);
 
 /// main optimized `sasum`
 ///
-/// `argmax(|x_i|)`
+/// `sum(|x_i|)`
 ///
 /// dispatches to 
 ///     NEON for n < 2725 
@@ -153,10 +151,12 @@ extern float snrm2(float *x_ptr, uint32_t n);
 
 /// NEON implementation 
 extern uint32_t isamax_neon(float *x_ptr, uint32_t n);
+/// SVE implementation
+extern uint32_t isamax_sve(float *x_ptr, uint32_t n);
 
 /// main optimized `isamax`
 ///
-/// `sum(|x_i|)` 
+/// `argmax(|x_i|)`
 ///
 /// dispatches to 
 ///     NEON for all n 
@@ -182,7 +182,7 @@ extern void daxpy_sme4xVGx4(double alpha, double *x_ptr, double *y_ptr, uint32_t
 ///     NEON for n < 360
 ///     SME  for n >= 360
 ///
-/// SME kernel is chosen based on the physical SVL.
+/// SME4 kernel is used for all physical SVLs.
 extern void daxpy(double alpha, double *x_ptr, double *y_ptr, uint32_t n);
 
 
@@ -228,7 +228,7 @@ extern double ddot_sme4xVGx4(double *x_ptr, double *y_ptr, uint32_t n);
 ///     NEON for n < 936
 ///     SME  for n >= 936
 ///
-/// SME kernel is chosen based on the physical SVL.
+/// SME4 kernel is used for all physical SVLs.
 extern double ddot(double *x_ptr, double *y_ptr, uint32_t n);
 
 
@@ -296,6 +296,8 @@ extern void dswap(double *x_ptr, double *y_ptr, uint32_t n);
 
 /// NEON implementation
 extern double dnrm2_neon(double *x_ptr, uint32_t n);
+/// SVE implementation
+extern double dnrm2_sve(double *x_ptr, uint32_t n);
 
 /// main optimized `dnrm2`
 ///
