@@ -30,6 +30,16 @@ static float* bench_vec_float(uint32_t length) {
     return buffer; 
 }
 
+static double* bench_vec_double(uint32_t length) {
+    double *buffer = malloc(length * sizeof(*buffer));
+
+    for (uint32_t idx = 0; idx < length; idx++) {
+        buffer[idx] = (double) rand() / RAND_MAX;
+    }
+
+    return buffer;
+}
+
 static void display_bench(
     char* routine, 
     double neon_s, 
