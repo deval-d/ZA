@@ -221,6 +221,68 @@ extern void sgemv(
 
 
 /// NEON implementation
+extern void dgemv_neon(
+    double alpha,
+    double beta,
+    double *a_ptr,
+    double *x_ptr,
+    double *y_ptr,
+    uint32_t m,
+    uint32_t n
+);
+
+/// SME implementation for any physical SVL
+extern void dgemv_sme4xVGx4(
+    double alpha,
+    double beta,
+    double *a_ptr,
+    double *x_ptr,
+    double *y_ptr,
+    uint32_t m,
+    uint32_t n
+);
+
+/// SME implementation for hardware with SVL >= 256 bits
+extern void dgemv_sme8xVGx4(
+    double alpha,
+    double beta,
+    double *a_ptr,
+    double *x_ptr,
+    double *y_ptr,
+    uint32_t m,
+    uint32_t n
+);
+
+/// main optimized `dgemv`
+///
+/// `y = alpha * A * x + beta * y`
+///
+/// A is an m x n column-major matrix.
+///
+/// dispatches to
+///     NEON for m <= 16
+///     NEON for m * n <= 1536
+///     NEON for m <= 32 and n <= 64
+///     SME  otherwise
+///
+/// SME dispatches to
+///     8xVGx4 for  
+///         SVL >= 256 bits 
+///         m >= 4 * SVL bytes 
+///         m * n <= 1536^2
+///     4xVGx4 otherwise
+extern void dgemv(
+    double alpha,
+    double beta,
+    double *a_ptr,
+    double *x_ptr,
+    double *y_ptr,
+    uint32_t m,
+    uint32_t n
+);
+
+
+/// NEON implementation
 extern void daxpy_neon(double alpha, double *x_ptr, double *y_ptr, uint32_t n);
 /// SVE implementation
 extern void daxpy_sve(double alpha, double *x_ptr, double *y_ptr, uint32_t n);

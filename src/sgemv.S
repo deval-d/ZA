@@ -526,26 +526,26 @@ _sgemv_sme:
 //  z1.s = dup beta
 //
 //  x5 = cntw
-//  x6 = j
+//  x6 = columns remaining
 //  x7 = i
 //
 //  w8 = first ZA group
 //  w9 = second ZA group, spaced halfway across ZA
 //
-//  keep 8xVGx4 worth of y in ZA live, so 32 SVL's.
+//  keep 8xVGx4 worth of A*x in ZA live, so 32 SVL's.
 //
 //  loop over i:
-//      load z1.s * y[i .. i + 32 * x5] into ZA
+//      zero ZA
 //      loop over j:
-//          z3.s = dup z0.s * x[j]
+//          z3.s = dup x[j]
 //          {z4.s-z7.s} = A[j * m + i .. j * m + i + 4 * x5]
 //          za.s[w8, 0, vgx4] += {z4.s-z7.s} * z3.s
 //          ...
 //          za.s[w9, 3, vgx4] += {z16.s-z19.s} * z3.s
-//      store ZA into y[i .. i + 32 * x5]
+//      y[i .. i + 32 * x5] = z0.s * ZA + z1.s * y[i .. i + 32 * x5]
 //
 //  leftover rows:
-//      keep 4xVGx4 or 1xVGx4 worth of y in ZA live.
+//      keep 4xVGx4 or 1xVGx4 worth of A*x in ZA live.
 _sgemv_sme8xVGx4:
     mov     w3, w3
     mov     w4, w4
@@ -569,7 +569,17 @@ _sgemv_sme8xVGx4:
     cntw    x5
     mov     x7, #0
     mov     w8, #0
+
     lsr     w9, w5, #1
+
+    ptrue   pn8.s
+    ptrue   pn9.s
+    ptrue   pn10.s
+    ptrue   pn11.s
+    ptrue   pn12.s
+    ptrue   pn13.s
+    ptrue   pn14.s
+    ptrue   pn15.s
 
 .Lsme_8xVGx4_i_loop:
     cmp     x7, x3
@@ -582,6 +592,10 @@ _sgemv_sme8xVGx4:
     lsl     x11, x5, #4
     cmp     x10, x11
     b.ls    .Lsme_8xVGx4_4x_tail
+
+    lsl     x11, x5, #5
+    cmp     x10, x11
+    b.hs    .Lsme_8xVGx4_load
 
     mov     x10, x7
     whilelo pn8.s, x10, x3, vlx4
@@ -601,139 +615,176 @@ _sgemv_sme8xVGx4:
     add     x10, x10, x5, lsl #2
     whilelo pn15.s, x10, x3, vlx4
 
-    mov     x10, x7
-    ld1w    {z4.s-z7.s}, pn8/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn9/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn10/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn11/z, [x2, x10, lsl #2]
+.Lsme_8xVGx4_load:
+    zero    {za}
 
-    fmul    z4.s, z4.s, z1.s
-    fmul    z5.s, z5.s, z1.s
-    fmul    z6.s, z6.s, z1.s
-    fmul    z7.s, z7.s, z1.s
-    fmul    z8.s, z8.s, z1.s
-    fmul    z9.s, z9.s, z1.s
-    fmul    z10.s, z10.s, z1.s
-    fmul    z11.s, z11.s, z1.s
-    fmul    z12.s, z12.s, z1.s
-    fmul    z13.s, z13.s, z1.s
-    fmul    z14.s, z14.s, z1.s
-    fmul    z15.s, z15.s, z1.s
-    fmul    z16.s, z16.s, z1.s
-    fmul    z17.s, z17.s, z1.s
-    fmul    z18.s, z18.s, z1.s
-    fmul    z19.s, z19.s, z1.s
-
-    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
-    mov     za.s[w8, 1, vgx4], {z8.s-z11.s}
-    mov     za.s[w8, 2, vgx4], {z12.s-z15.s}
-    mov     za.s[w8, 3, vgx4], {z16.s-z19.s}
-
-    add     x10, x10, x5, lsl #2
-    ld1w    {z4.s-z7.s}, pn12/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn13/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn14/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn15/z, [x2, x10, lsl #2]
-
-    fmul    z4.s, z4.s, z1.s
-    fmul    z5.s, z5.s, z1.s
-    fmul    z6.s, z6.s, z1.s
-    fmul    z7.s, z7.s, z1.s
-    fmul    z8.s, z8.s, z1.s
-    fmul    z9.s, z9.s, z1.s
-    fmul    z10.s, z10.s, z1.s
-    fmul    z11.s, z11.s, z1.s
-    fmul    z12.s, z12.s, z1.s
-    fmul    z13.s, z13.s, z1.s
-    fmul    z14.s, z14.s, z1.s
-    fmul    z15.s, z15.s, z1.s
-    fmul    z16.s, z16.s, z1.s
-    fmul    z17.s, z17.s, z1.s
-    fmul    z18.s, z18.s, z1.s
-    fmul    z19.s, z19.s, z1.s
-
-    mov     za.s[w9, 0, vgx4], {z4.s-z7.s}
-    mov     za.s[w9, 1, vgx4], {z8.s-z11.s}
-    mov     za.s[w9, 2, vgx4], {z12.s-z15.s}
-    mov     za.s[w9, 3, vgx4], {z16.s-z19.s}
-
-    mov     x6, #0
+    mov     x6, x4
     mov     x11, x1
+    add     x12, x0, x7, lsl #2
+    lsl     x13, x3, #2
+
+    cbz     x6, .Lsme_8xVGx4_store
 
 .Lsme_8xVGx4_j_loop:
-    whilelo p0.s, x6, x4
-    b.none  .Lsme_8xVGx4_store
-
     ldr     s3, [x11], #4
-    fmul    s3, s3, s0
     dup     z3.s, z3.s[0]
 
-    madd    x10, x6, x3, x7
-
-    ld1w    {z4.s-z7.s}, pn8/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn9/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn10/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn11/z, [x0, x10, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x12]
+    ld1w    {z8.s-z11.s}, pn9/z, [x12, #4, mul vl]
+    ld1w    {z12.s-z15.s}, pn10/z, [x12, #8, mul vl]
+    ld1w    {z16.s-z19.s}, pn11/z, [x12, #12, mul vl]
 
     fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z3.s
     fmla    za.s[w8, 1, vgx4], {z8.s-z11.s}, z3.s
     fmla    za.s[w8, 2, vgx4], {z12.s-z15.s}, z3.s
     fmla    za.s[w8, 3, vgx4], {z16.s-z19.s}, z3.s
 
-    add     x10, x10, x5, lsl #2
-    ld1w    {z4.s-z7.s}, pn12/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn13/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn14/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn15/z, [x0, x10, lsl #2]
+    add     x10, x12, x5, lsl #6
+    ld1w    {z4.s-z7.s}, pn12/z, [x10]
+    ld1w    {z8.s-z11.s}, pn13/z, [x10, #4, mul vl]
+    ld1w    {z12.s-z15.s}, pn14/z, [x10, #8, mul vl]
+    ld1w    {z16.s-z19.s}, pn15/z, [x10, #12, mul vl]
 
     fmla    za.s[w9, 0, vgx4], {z4.s-z7.s}, z3.s
     fmla    za.s[w9, 1, vgx4], {z8.s-z11.s}, z3.s
     fmla    za.s[w9, 2, vgx4], {z12.s-z15.s}, z3.s
     fmla    za.s[w9, 3, vgx4], {z16.s-z19.s}, z3.s
 
-    add     x6, x6, #1
-    b       .Lsme_8xVGx4_j_loop
+    add     x12, x12, x13
+    subs    x6, x6, #1
+    b.ne    .Lsme_8xVGx4_j_loop
 
 .Lsme_8xVGx4_store:
     mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
-    mov     {z8.s-z11.s}, za.s[w8, 1, vgx4]
-    mov     {z12.s-z15.s}, za.s[w8, 2, vgx4]
-    mov     {z16.s-z19.s}, za.s[w8, 3, vgx4]
+    add     x10, x2, x7, lsl #2
+    ld1w    {z20.s-z23.s}, pn8/z, [x10]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn8, [x10]
 
-    mov     x10, x7
-    st1w    {z4.s-z7.s}, pn8, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z8.s-z11.s}, pn9, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z12.s-z15.s}, pn10, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z16.s-z19.s}, pn11, [x2, x10, lsl #2]
+    mov     {z4.s-z7.s}, za.s[w8, 1, vgx4]
+    ld1w    {z20.s-z23.s}, pn9/z, [x10, #4, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn9, [x10, #4, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w8, 2, vgx4]
+    ld1w    {z20.s-z23.s}, pn10/z, [x10, #8, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn10, [x10, #8, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w8, 3, vgx4]
+    ld1w    {z20.s-z23.s}, pn11/z, [x10, #12, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn11, [x10, #12, mul vl]
+
+    add     x10, x10, x5, lsl #6
 
     mov     {z4.s-z7.s}, za.s[w9, 0, vgx4]
-    mov     {z8.s-z11.s}, za.s[w9, 1, vgx4]
-    mov     {z12.s-z15.s}, za.s[w9, 2, vgx4]
-    mov     {z16.s-z19.s}, za.s[w9, 3, vgx4]
+    ld1w    {z20.s-z23.s}, pn12/z, [x10]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn12, [x10]
 
-    add     x10, x10, x5, lsl #2
-    st1w    {z4.s-z7.s}, pn12, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z8.s-z11.s}, pn13, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z12.s-z15.s}, pn14, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z16.s-z19.s}, pn15, [x2, x10, lsl #2]
+    mov     {z4.s-z7.s}, za.s[w9, 1, vgx4]
+    ld1w    {z20.s-z23.s}, pn13/z, [x10, #4, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn13, [x10, #4, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w9, 2, vgx4]
+    ld1w    {z20.s-z23.s}, pn14/z, [x10, #8, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn14, [x10, #8, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w9, 3, vgx4]
+    ld1w    {z20.s-z23.s}, pn15/z, [x10, #12, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn15, [x10, #12, mul vl]
 
     incw    x7, all, mul #16
     incw    x7, all, mul #16
@@ -750,116 +801,140 @@ _sgemv_sme8xVGx4:
     add     x10, x10, x5, lsl #2
     whilelo pn11.s, x10, x3, vlx4
 
-    mov     x10, x7
-    ld1w    {z4.s-z7.s}, pn8/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn9/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn10/z, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn11/z, [x2, x10, lsl #2]
+    zero    {za}
 
-    fmul    z4.s, z4.s, z1.s
-    fmul    z5.s, z5.s, z1.s
-    fmul    z6.s, z6.s, z1.s
-    fmul    z7.s, z7.s, z1.s
-    fmul    z8.s, z8.s, z1.s
-    fmul    z9.s, z9.s, z1.s
-    fmul    z10.s, z10.s, z1.s
-    fmul    z11.s, z11.s, z1.s
-    fmul    z12.s, z12.s, z1.s
-    fmul    z13.s, z13.s, z1.s
-    fmul    z14.s, z14.s, z1.s
-    fmul    z15.s, z15.s, z1.s
-    fmul    z16.s, z16.s, z1.s
-    fmul    z17.s, z17.s, z1.s
-    fmul    z18.s, z18.s, z1.s
-    fmul    z19.s, z19.s, z1.s
-
-    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
-    mov     za.s[w8, 1, vgx4], {z8.s-z11.s}
-    mov     za.s[w8, 2, vgx4], {z12.s-z15.s}
-    mov     za.s[w8, 3, vgx4], {z16.s-z19.s}
-
-    mov     x6, #0
+    mov     x6, x4
     mov     x11, x1
+    add     x12, x0, x7, lsl #2
+    lsl     x13, x3, #2
+
+    cbz     x6, .Lsme_8xVGx4_4x_store
 
 .Lsme_8xVGx4_4x_j_loop:
-    whilelo p0.s, x6, x4
-    b.none  .Lsme_8xVGx4_4x_store
-
     ldr     s3, [x11], #4
-    fmul    s3, s3, s0
     dup     z3.s, z3.s[0]
 
-    madd    x10, x6, x3, x7
-
-    ld1w    {z4.s-z7.s}, pn8/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn9/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn10/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn11/z, [x0, x10, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x12]
+    ld1w    {z8.s-z11.s}, pn9/z, [x12, #4, mul vl]
+    ld1w    {z12.s-z15.s}, pn10/z, [x12, #8, mul vl]
+    ld1w    {z16.s-z19.s}, pn11/z, [x12, #12, mul vl]
 
     fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z3.s
     fmla    za.s[w8, 1, vgx4], {z8.s-z11.s}, z3.s
     fmla    za.s[w8, 2, vgx4], {z12.s-z15.s}, z3.s
     fmla    za.s[w8, 3, vgx4], {z16.s-z19.s}, z3.s
 
-    add     x6, x6, #1
-    b       .Lsme_8xVGx4_4x_j_loop
+    add     x12, x12, x13
+    subs    x6, x6, #1
+    b.ne    .Lsme_8xVGx4_4x_j_loop
 
 .Lsme_8xVGx4_4x_store:
     mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
-    mov     {z8.s-z11.s}, za.s[w8, 1, vgx4]
-    mov     {z12.s-z15.s}, za.s[w8, 2, vgx4]
-    mov     {z16.s-z19.s}, za.s[w8, 3, vgx4]
+    add     x10, x2, x7, lsl #2
+    ld1w    {z20.s-z23.s}, pn8/z, [x10]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn8, [x10]
 
-    mov     x10, x7
-    st1w    {z4.s-z7.s}, pn8, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z8.s-z11.s}, pn9, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z12.s-z15.s}, pn10, [x2, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    st1w    {z16.s-z19.s}, pn11, [x2, x10, lsl #2]
+    mov     {z4.s-z7.s}, za.s[w8, 1, vgx4]
+    ld1w    {z20.s-z23.s}, pn9/z, [x10, #4, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn9, [x10, #4, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w8, 2, vgx4]
+    ld1w    {z20.s-z23.s}, pn10/z, [x10, #8, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn10, [x10, #8, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w8, 3, vgx4]
+    ld1w    {z20.s-z23.s}, pn11/z, [x10, #12, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn11, [x10, #12, mul vl]
     b       .Lsme_8xVGx4_done
 
 .Lsme_8xVGx4_1x_tail:
     whilelo pn8.s, x7, x3, vlx4
     b.none  .Lsme_8xVGx4_done
 
-    ld1w    {z4.s-z7.s}, pn8/z, [x2, x7, lsl #2]
+    zero    {za}
 
-    fmul    z4.s, z4.s, z1.s
-    fmul    z5.s, z5.s, z1.s
-    fmul    z6.s, z6.s, z1.s
-    fmul    z7.s, z7.s, z1.s
-
-    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
-
-    mov     x6, #0
+    mov     x6, x4
     mov     x11, x1
+    add     x12, x0, x7, lsl #2
+    lsl     x13, x3, #2
+
+    cbz     x6, .Lsme_8xVGx4_1x_store
 
 .Lsme_8xVGx4_1x_j_loop:
-    whilelo p0.s, x6, x4
-    b.none  .Lsme_8xVGx4_1x_store
-
     ldr     s3, [x11], #4
-    fmul    s3, s3, s0
     dup     z3.s, z3.s[0]
 
-    madd    x10, x6, x3, x7
-    ld1w    {z4.s-z7.s}, pn8/z, [x0, x10, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x12]
     fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z3.s
 
-    add     x6, x6, #1
-    b       .Lsme_8xVGx4_1x_j_loop
+    add     x12, x12, x13
+    subs    x6, x6, #1
+    b.ne    .Lsme_8xVGx4_1x_j_loop
 
 .Lsme_8xVGx4_1x_store:
     mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
-    st1w    {z4.s-z7.s}, pn8, [x2, x7, lsl #2]
+    ld1w    {z20.s-z23.s}, pn8/z, [x2, x7, lsl #2]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn8, [x2, x7, lsl #2]
 
 .Lsme_8xVGx4_done:
     smstop
@@ -887,28 +962,23 @@ _sgemv_sme8xVGx4:
 //  z1.s = dup beta
 //
 //  x5 = cntw
-//  x6 = j
+//  x6 = columns remaining
 //  x7 = i
 //
-//  keep 4xVGx4 worth of y in ZA live, so 16 SVL's.
-//
-//  za.s[w8, 0, vgx4] = z1.s * y[i .. i + 4 * x5 ]
-//  za.s[w8, 1, vgx4] = z1.s * y[i + 4cntw .. i + 8 * x5]
-//  za.s[w8, 2, vgx4] = z1.s * y[i + 8cntw .. i + 12 * x5]
-//  za.s[w8, 3, vgx4] = z1.s * y[i + 12cntw .. i + 16 * x5]
+//  keep 4xVGx4 worth of A*x in ZA live, so 16 SVL's.
 //
 //  loop over i:
-//      load z1.s * y[i .. i + 16 * x5] into ZA
+//      zero ZA
 //      loop over j:
-//          z3.s = dup z0.s * x[j]
+//          z3.s = dup x[j]
 //          {z4.s-z7.s} = A[j * m + i .. j * m + i + 4 * x5]
 //          za.s[w8, 0, vgx4] += {z4.s-z7.s} * z3.s
 //          ...
 //          za.s[w8, 3, vgx4] += {z16.s-z19.s} * z3.s
-//      store ZA into y[i .. i + 16 * x5]
+//      y[i .. i + 16 * x5] = z0.s * ZA + z1.s * y[i .. i + 16 * x5]
 //
 //  leftover rows:
-//      keep 1xVGx4 worth of y in ZA live, so 4 SVL's.
+//      keep 1xVGx4 worth of A*x in ZA live, so 4 SVL's.
 _sgemv_sme4xVGx4:
     mov     w3, w3
     mov     w4, w4
@@ -933,6 +1003,11 @@ _sgemv_sme4xVGx4:
     mov     x7, #0
     mov     w8, #0
 
+    ptrue   pn8.s
+    ptrue   pn9.s
+    ptrue   pn10.s
+    ptrue   pn11.s
+
 .Lsme_4xVGx4_i_loop:
     cmp     x7, x3
     b.hs    .Lsme_4xVGx4_done
@@ -947,78 +1022,109 @@ _sgemv_sme4xVGx4:
     add     x14, x13, x5, lsl #2
     add     x15, x14, x5, lsl #2
 
+    lsl     x10, x5, #4
+    cmp     x9, x10
+    b.hs    .Lsme_4xVGx4_load
+
     whilelo pn8.s, x12, x3, vlx4
     b.none  .Lsme_4xVGx4_done
     whilelo pn9.s, x13, x3, vlx4
     whilelo pn10.s, x14, x3, vlx4
     whilelo pn11.s, x15, x3, vlx4
 
-    ld1w    {z4.s-z7.s}, pn8/z, [x2, x12, lsl #2]
-    ld1w    {z8.s-z11.s}, pn9/z, [x2, x13, lsl #2]
-    ld1w    {z12.s-z15.s}, pn10/z, [x2, x14, lsl #2]
-    ld1w    {z16.s-z19.s}, pn11/z, [x2, x15, lsl #2]
+.Lsme_4xVGx4_load:
+    zero    {za}
 
-    fmul    z4.s, z4.s, z1.s
-    fmul    z5.s, z5.s, z1.s
-    fmul    z6.s, z6.s, z1.s
-    fmul    z7.s, z7.s, z1.s
-    fmul    z8.s, z8.s, z1.s
-    fmul    z9.s, z9.s, z1.s
-    fmul    z10.s, z10.s, z1.s
-    fmul    z11.s, z11.s, z1.s
-    fmul    z12.s, z12.s, z1.s
-    fmul    z13.s, z13.s, z1.s
-    fmul    z14.s, z14.s, z1.s
-    fmul    z15.s, z15.s, z1.s
-    fmul    z16.s, z16.s, z1.s
-    fmul    z17.s, z17.s, z1.s
-    fmul    z18.s, z18.s, z1.s
-    fmul    z19.s, z19.s, z1.s
-
-    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
-    mov     za.s[w8, 1, vgx4], {z8.s-z11.s}
-    mov     za.s[w8, 2, vgx4], {z12.s-z15.s}
-    mov     za.s[w8, 3, vgx4], {z16.s-z19.s}
-
-    mov     x6, #0
+    mov     x6, x4
     mov     x11, x1
+    add     x12, x0, x7, lsl #2
+    lsl     x13, x3, #2
+
+    cbz     x6, .Lsme_4xVGx4_store
 
 .Lsme_4xVGx4_j_loop:
-    whilelo p0.s, x6, x4
-    b.none  .Lsme_4xVGx4_store
-
     ldr     s3, [x11], #4
-    fmul    s3, s3, s0
     dup     z3.s, z3.s[0]
 
-    madd    x10, x6, x3, x7
-
-    ld1w    {z4.s-z7.s}, pn8/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z8.s-z11.s}, pn9/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z12.s-z15.s}, pn10/z, [x0, x10, lsl #2]
-    add     x10, x10, x5, lsl #2
-    ld1w    {z16.s-z19.s}, pn11/z, [x0, x10, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x12]
+    ld1w    {z8.s-z11.s}, pn9/z, [x12, #4, mul vl]
+    ld1w    {z12.s-z15.s}, pn10/z, [x12, #8, mul vl]
+    ld1w    {z16.s-z19.s}, pn11/z, [x12, #12, mul vl]
 
     fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z3.s
     fmla    za.s[w8, 1, vgx4], {z8.s-z11.s}, z3.s
     fmla    za.s[w8, 2, vgx4], {z12.s-z15.s}, z3.s
     fmla    za.s[w8, 3, vgx4], {z16.s-z19.s}, z3.s
 
-    add     x6, x6, #1
-    b       .Lsme_4xVGx4_j_loop
+    add     x12, x12, x13
+    subs    x6, x6, #1
+    b.ne    .Lsme_4xVGx4_j_loop
 
 .Lsme_4xVGx4_store:
     mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
-    mov     {z8.s-z11.s}, za.s[w8, 1, vgx4]
-    mov     {z12.s-z15.s}, za.s[w8, 2, vgx4]
-    mov     {z16.s-z19.s}, za.s[w8, 3, vgx4]
+    add     x10, x2, x7, lsl #2
+    ld1w    {z20.s-z23.s}, pn8/z, [x10]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn8, [x10]
 
-    st1w    {z4.s-z7.s}, pn8, [x2, x12, lsl #2]
-    st1w    {z8.s-z11.s}, pn9, [x2, x13, lsl #2]
-    st1w    {z12.s-z15.s}, pn10, [x2, x14, lsl #2]
-    st1w    {z16.s-z19.s}, pn11, [x2, x15, lsl #2]
+    mov     {z4.s-z7.s}, za.s[w8, 1, vgx4]
+    ld1w    {z20.s-z23.s}, pn9/z, [x10, #4, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn9, [x10, #4, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w8, 2, vgx4]
+    ld1w    {z20.s-z23.s}, pn10/z, [x10, #8, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn10, [x10, #8, mul vl]
+
+    mov     {z4.s-z7.s}, za.s[w8, 3, vgx4]
+    ld1w    {z20.s-z23.s}, pn11/z, [x10, #12, mul vl]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn11, [x10, #12, mul vl]
 
     incw    x7, all, mul #16
     b       .Lsme_4xVGx4_i_loop
@@ -1027,36 +1133,42 @@ _sgemv_sme4xVGx4:
     whilelo pn8.s, x7, x3, vlx4
     b.none  .Lsme_4xVGx4_done
 
-    ld1w    {z4.s-z7.s}, pn8/z, [x2, x7, lsl #2]
+    zero    {za}
 
-    fmul    z4.s, z4.s, z1.s
-    fmul    z5.s, z5.s, z1.s
-    fmul    z6.s, z6.s, z1.s
-    fmul    z7.s, z7.s, z1.s
-
-    mov     za.s[w8, 0, vgx4], {z4.s-z7.s}
-
-    mov     x6, #0
+    mov     x6, x4
     mov     x11, x1
+    add     x12, x0, x7, lsl #2
+    lsl     x13, x3, #2
+
+    cbz     x6, .Lsme_1xVGx4_store
 
 .Lsme_1xVGx4_j_loop:
-    whilelo p0.s, x6, x4
-    b.none  .Lsme_1xVGx4_store
-
     ldr     s3, [x11], #4
-    fmul    s3, s3, s0
     dup     z3.s, z3.s[0]
 
-    madd    x10, x6, x3, x7
-    ld1w    {z4.s-z7.s}, pn8/z, [x0, x10, lsl #2]
+    ld1w    {z4.s-z7.s}, pn8/z, [x12]
     fmla    za.s[w8, 0, vgx4], {z4.s-z7.s}, z3.s
 
-    add     x6, x6, #1
-    b       .Lsme_1xVGx4_j_loop
+    add     x12, x12, x13
+    subs    x6, x6, #1
+    b.ne    .Lsme_1xVGx4_j_loop
 
 .Lsme_1xVGx4_store:
     mov     {z4.s-z7.s}, za.s[w8, 0, vgx4]
-    st1w    {z4.s-z7.s}, pn8, [x2, x7, lsl #2]
+    ld1w    {z20.s-z23.s}, pn8/z, [x2, x7, lsl #2]
+    fmul    z20.s, z20.s, z1.s
+    fmul    z21.s, z21.s, z1.s
+    fmul    z22.s, z22.s, z1.s
+    fmul    z23.s, z23.s, z1.s
+    fmul    z4.s, z4.s, z0.s
+    fmul    z5.s, z5.s, z0.s
+    fmul    z6.s, z6.s, z0.s
+    fmul    z7.s, z7.s, z0.s
+    fadd    z20.s, z20.s, z4.s
+    fadd    z21.s, z21.s, z5.s
+    fadd    z22.s, z22.s, z6.s
+    fadd    z23.s, z23.s, z7.s
+    st1w    {z20.s-z23.s}, pn8, [x2, x7, lsl #2]
 
 .Lsme_4xVGx4_done:
     smstop
